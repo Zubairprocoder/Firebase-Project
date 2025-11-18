@@ -1,8 +1,13 @@
 // Firebase.js
 import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
+import {
+  getAuth,
+  GoogleAuthProvider,
+  FacebookAuthProvider,
+} from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getDatabase } from "firebase/database";
+
 const firebaseConfig = {
   apiKey: "AIzaSyAksCRZD9zh3CVA75g9AeD9x5NtH3DX5zk",
   authDomain: "fir-setup-d85be.firebaseapp.com",
@@ -23,4 +28,6 @@ const db = getDatabase(app);
 
 // Export them
 export { auth, firestore, db };
+export const googleProvider = new GoogleAuthProvider();
+export const facebookProvider = new FacebookAuthProvider();
 export default app;
