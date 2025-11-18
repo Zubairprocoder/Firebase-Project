@@ -5,11 +5,6 @@ import { ToastContainer, toast } from "react-toastify";
 import { FcGoogle } from "react-icons/fc";
 import { FaFacebook, FaEye, FaEyeSlash } from "react-icons/fa";
 import {
-  getAuth,
-  linkWithCredential,
-  FacebookAuthProvider,
-} from "firebase/auth";
-import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
@@ -35,79 +30,66 @@ export default function RegisterLogin() {
     formState: { errors },
   } = useForm();
 
-  // Auth Listener
+  // Auth Listener (SAFE VERSION)
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      console.log(currentUser)
+      console.log(currentUser);
       setUser(currentUser);
-      if (currentUser) navigate("/dashboard");
     });
     return () => unsubscribe();
-  }, [navigate]);
+  }, []);
 
   const onSubmit = async (data) => {
     setLoading(true);
+
     try {
       if (isRegister) {
         await createUserWithEmailAndPassword(auth, data.email, data.password);
-        toast.success("Signup successful!", { position: "top-center" });
+        toast.success("Signup successful!");
       } else {
         await signInWithEmailAndPassword(auth, data.email, data.password);
-        toast.success("Login successful!", { position: "top-center" });
+        toast.success("Login successful!");
       }
+
       reset();
-      setTimeout(() => navigate("/dashboard"), 800);
+      setTimeout(() => navigate("/dashboard"), 500);
     } catch (err) {
-      toast.error(err.message, { position: "top-center" });
+      toast.error(err.message);
     } finally {
-      setTimeout(() => setLoading(false), 500);
+      setLoading(false);
     }
   };
 
-  // Google Login
+  // Google Login (SAFE)
   const handleGoogleLogin = async () => {
     try {
       await signInWithPopup(auth, googleProvider);
-      toast.success("Logged in with Google!", { position: "top-center" });
+      toast.success("Logged in with Google!");
       navigate("/dashboard");
     } catch (err) {
-      toast.error(err.message, { position: "top-center" });
+      toast.error(err.message);
     }
   };
 
-  // Facebook Login
- const handleFacebookLogin = async () => {
-   try {
-     const result = await signInWithPopup(auth, facebookProvider);
-     const user = result.user;
-     const email = user.email;
-
-     // Check if the email already exists with a different provider
-     const signInMethods = await getAuth().fetchSignInMethodsForEmail(email);
-     if (signInMethods.length > 0 && !signInMethods.includes("facebook.com")) {
-       // Link the Facebook account to the existing account
-       const credential = FacebookAuthProvider.credentialFromResult(result);
-       const existingUser = auth.currentUser;
-       await linkWithCredential(existingUser, credential);
-       toast.success("Logged in with Facebook!", { position: "top-center" });
-       navigate("/dashboard");
-     } else {
-       toast.success("Logged in with Facebook!", { position: "top-center" });
-       navigate("/dashboard");
-     }
-   } catch (err) {
-     console.log(err);
-     toast.error(err.message, { position: "top-center" });
-   }
- };
+  // Facebook Login (FIXED)
+  const handleFacebookLogin = async () => {
+    try {
+      await signInWithPopup(auth, facebookProvider);
+      toast.success("Logged in with Facebook!");
+      navigate("/dashboard");
+    } catch (err) {
+      toast.error(err.message);
+      console.log(err);
+    }
+  };
 
   const handleLogout = async () => {
     try {
       await signOut(auth);
-      toast.success("Logged out!", { position: "top-center" });
+      toast.success("Logged out!");
       setUser(null);
     } catch (err) {
-      toast.error(err.message, { position: "top-center" });
+      toast.error(err.message);
     }
   };
 
@@ -142,11 +124,6 @@ export default function RegisterLogin() {
         <ToastContainer
           position="top-center"
           autoClose={3000}
-          hideProgressBar={false}
-          newestOnTop={false}
-          closeOnClick
-          pauseOnHover
-          draggable
           theme="colored"
         />
 
@@ -199,32 +176,13 @@ export default function RegisterLogin() {
           <motion.button
             type="submit"
             disabled={loading}
-            className={`w-full bg-blue-600 cursor-pointer hover:scale-105 transition-transform  text-white py-3 rounded-xl font-bold shadow-md ${
-              loading && "opacity-50 cursor-not-allowed"
+            className={`w-full bg-blue-600 cursor-pointer hover:scale-105 transition-transform text-white py-3 rounded-xl font-bold shadow-md ${
+              loading ? "opacity-50 cursor-not-allowed" : ""
             }`}
           >
             {loading ? "Processing..." : isRegister ? "Sign Up" : "Login"}
           </motion.button>
         </form>
-
-        {/* Google Login */}
-        <button
-          onClick={handleGoogleLogin}
-          className="w-full mt-4 flex items-center justify-center gap-3 bg-white border border-gray-300 text-gray-700 py-3 rounded-xl shadow-md hover:bg-gray-100 transition cursor-pointer hover:scale-105 font-semibold"
-        >
-          <FcGoogle size={24} />
-          <span className="font-semibold">Continue with Google</span>
-        </button>
-
-        {/* Facebook Login */}
-        <button
-          onClick={handleFacebookLogin}
-          className="w-full mt-4 flex items-center justify-center gap-3 bg-white border border-gray-300 text-gray-700 py-3 rounded-xl shadow-md hover:bg-gray-100 transition cursor-pointer hover:scale-105 font-semibold"
-        >
-          <FaFacebook color="#1877F2" size={24} />
-          <span className="font-semibold">Continue with Facebook</span>
-        </button>
-
         <p className="mt-4 text-center text-gray-700">
           {isRegister ? "Already have an account?" : "Don't have an account?"}{" "}
           <span
@@ -234,6 +192,23 @@ export default function RegisterLogin() {
             {isRegister ? "Login" : "Sign Up"}
           </span>
         </p>
+        {/* GOOGLE */}
+        <button
+          onClick={handleGoogleLogin}
+          className="w-full mt-4 flex items-center justify-center gap-3 bg-white border border-gray-300 text-gray-700 py-3 rounded-xl shadow-md hover:bg-gray-100 transition cursor-pointer hover:scale-105 font-semibold"
+        >
+          <FcGoogle size={24} />
+          Continue with Google
+        </button>
+
+        {/* FACEBOOK */}
+        <button
+          onClick={handleFacebookLogin}
+          className="w-full mt-4 flex items-center justify-center gap-3 bg-white border border-gray-300 text-gray-700 py-3 rounded-xl shadow-md hover:bg-gray-100 transition cursor-pointer hover:scale-105 font-semibold"
+        >
+          <FaFacebook color="#1877F2" size={24} />
+          Continue with Facebook
+        </button>
       </motion.div>
     </div>
   );

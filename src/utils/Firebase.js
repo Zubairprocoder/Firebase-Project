@@ -1,6 +1,9 @@
-// Firebase.js
 import { initializeApp } from "firebase/app";
-import { getAuth,GoogleAuthProvider,FacebookAuthProvider } from "firebase/auth";
+import {
+  getAuth,
+  GoogleAuthProvider,
+  FacebookAuthProvider,
+} from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getDatabase } from "firebase/database";
 
@@ -14,16 +17,15 @@ const firebaseConfig = {
   measurementId: "G-60RDVVWK7E",
 };
 
-// Initialize App
 const app = initializeApp(firebaseConfig);
 
-// Export Services
 const auth = getAuth(app);
 const firestore = getFirestore(app);
 const db = getDatabase(app);
 
-// Export them
 export { auth, firestore, db };
+
 export const googleProvider = new GoogleAuthProvider();
 export const facebookProvider = new FacebookAuthProvider();
+
 export default app;
