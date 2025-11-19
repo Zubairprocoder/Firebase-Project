@@ -14,6 +14,10 @@ import {
   signInWithRedirect,
   getRedirectResult,
   updateProfile,
+  fetchSignInMethodsForEmail,
+  linkWithCredential,
+  GoogleAuthProvider,
+  FacebookAuthProvider,
 } from "firebase/auth";
 
 import { auth, googleProvider, facebookProvider } from "../utils/Firebase";
@@ -42,22 +46,26 @@ export default function RegisterLogin() {
     return () => unsubscribe();
   }, []);
 
-  // Handle redirect result (Mobile Google/Facebook login)
+  // Handle redirect result for mobile logins
   useEffect(() => {
     getRedirectResult(auth)
       .then((result) => {
-        if (result && result.user) {
-          navigate("/dashboard");
-        }
+        if (result && result.user) navigate("/dashboard");
       })
       .catch((err) => console.log(err));
-  }, []);
+  }, [navigate]);
 
   // Email Register/Login
   const onSubmit = async (data) => {
     setLoading(true);
-
     try {
+      // Basic validation
+      if (!data.email || !data.password || (isRegister && !data.fullname)) {
+        toast.error("Please enter a valid email, password, and name.");
+        setLoading(false);
+        return;
+      }
+
       if (isRegister) {
         const res = await createUserWithEmailAndPassword(
           auth,
@@ -79,19 +87,35 @@ export default function RegisterLogin() {
       reset();
       setTimeout(() => navigate("/dashboard"), 600);
     } catch (err) {
-      toast.error(err.message);
+      if (err.code === "auth/email-already-in-use") {
+        toast.error("Email already in use, please login.");
+      } else if (err.code === "auth/invalid-email") {
+        toast.error("Invalid email format.");
+      } else if (err.code === "auth/wrong-password") {
+        toast.error("Incorrect password.");
+      } else {
+        toast.error(err.message);
+      }
     } finally {
       setLoading(false);
     }
   };
 
   // GOOGLE LOGIN
+  // GOOGLE LOGIN with fallback for mobile storage issue
   const handleGoogleLogin = async () => {
     try {
       if (window.innerWidth < 768) {
-        await signInWithRedirect(auth, googleProvider); // MOBILE
+        // Mobile try redirect
+        try {
+          await signInWithRedirect(auth, googleProvider);
+        } catch (redirectError) {
+          console.log("Redirect failed, falling back to popup:", redirectError);
+          // fallback to popup
+          await signInWithPopup(auth, googleProvider);
+        }
       } else {
-        await signInWithPopup(auth, googleProvider); // DESKTOP
+        await signInWithPopup(auth, googleProvider); // Desktop
       }
       navigate("/dashboard");
     } catch (err) {
@@ -100,21 +124,44 @@ export default function RegisterLogin() {
   };
 
   // FACEBOOK LOGIN
+  // Facebook login
   const handleFacebookLogin = async () => {
     try {
       if (window.innerWidth < 768) {
-        await signInWithRedirect(auth, facebookProvider); // MOBILE
+        // MOBILE: Redirect
+        await signInWithRedirect(auth, facebookProvider);
       } else {
-        await signInWithPopup(auth, facebookProvider); // DESKTOP
+        // DESKTOP: Popup
+        const result = await signInWithPopup(auth, facebookProvider);
+        toast.success("Logged in with Facebook!");
+        navigate("/dashboard");
       }
-      toast.success("Logged in with Facebook!");
-      navigate("/dashboard");
-    } catch (err) {
-      toast.error(err.message);
+    } catch (error) {
+      if (error.code === "auth/account-exists-with-different-credential") {
+        const email = error.customData.email;
+        toast.error(
+          "Account exists with different credential. Please login using your email/password or Google first.",
+          { position: "top-center", autoClose: 5000 }
+        );
+      } else {
+        toast.error(error.message);
+      }
     }
   };
 
-  // LOGOUT (when user logged in)
+  // Get redirect result (for mobile)
+  useEffect(() => {
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result && result.user) {
+          toast.success("Logged in with Facebook!");
+          navigate("/dashboard");
+        }
+      })
+      .catch((err) => console.error("Redirect result error:", err));
+  }, []);
+
+  // LOGOUT
   const handleLogout = async () => {
     try {
       await signOut(auth);
@@ -125,7 +172,7 @@ export default function RegisterLogin() {
     }
   };
 
-  // If user logged in already – show logout screen
+  // If user logged in
   if (user) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-4 space-y-4">
@@ -135,7 +182,7 @@ export default function RegisterLogin() {
 
         <button
           onClick={handleLogout}
-          className="bg-red-500 text-white px-6 py-3 rounded-xl shadow-md hover:bg-red-600 hover:scale-105 transition-transform font-semibold"
+          className="bg-red-500 text-white px-6 py-3 rounded-xl shadow-md hover:bg-red-600 hover:scale-105 transition-transform font-semibold cursor-pointer"
         >
           Logout
         </button>
