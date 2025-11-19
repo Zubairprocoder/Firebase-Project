@@ -2,19 +2,20 @@ import React, { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { FaBars, FaTimes, FaUser, FaSignOutAlt } from "react-icons/fa";
 import { auth } from "../utils/Firebase";
-import { onAuthStateChanged, signOut } from "firebase/auth";
-import { convertImageToBlob, uploadPNGToStorage } from "../utils/UploadPng";
+import { onAuthStateChanged, signOut, updateProfile } from "firebase/auth";
+import { getStorage, ref, deleteObject } from "firebase/storage";
+import { uploadPNGToStorage } from "../utils/UploadPng";
 
 const Navbar = () => {
   const location = useLocation();
   const [open, setOpen] = useState(false);
   const [user, setUser] = useState(null);
   const [profileOpen, setProfileOpen] = useState(false);
-  const [customPNG, setCustomPNG] = useState(null);
 
   const profileRef = useRef();
+  const storage = getStorage();
 
-  // Close dropdown when clicking outside
+  // Close dropdown when clicked outside
   useEffect(() => {
     const handleClick = (e) => {
       if (profileRef.current && !profileRef.current.contains(e.target)) {
@@ -25,46 +26,56 @@ const Navbar = () => {
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
-  // Convert Google photo → PNG
-  const saveGoogleImageAsPNG = async (currentUser) => {
-    if (!currentUser?.photoURL) return null;
-
-    const pngBlob = await convertImageToBlob(currentUser.photoURL);
-    const imageURL = await uploadPNGToStorage(pngBlob, currentUser.uid);
-
-    setCustomPNG(imageURL);
-  };
-
   // Listen auth state
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
-
-      if (currentUser && !customPNG) {
-        await saveGoogleImageAsPNG(currentUser);
-      }
     });
-
     return () => unsubscribe();
   }, []);
 
-  // Get profile image logic
   const getProfileImage = () => {
-    if (customPNG) return customPNG;
     if (user?.photoURL) return user.photoURL;
-    return null;
-  };
-
-  const getFallbackLetter = () => {
-    if (!user?.email) return "U";
-    return user.email.charAt(0).toUpperCase();
+    return "https://cdn-icons-png.flaticon.com/512/3177/3177440.png"; // default
   };
 
   const handleLogout = async () => {
     await signOut(auth);
     setOpen(false);
     setProfileOpen(false);
-    setCustomPNG(null);
+  };
+
+  // Change Profile Photo
+  const handleChangePhoto = async () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+    input.click();
+
+    input.onchange = async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const downloadURL = await uploadPNGToStorage(file, user.uid);
+      await updateProfile(auth.currentUser, { photoURL: downloadURL });
+      window.location.reload();
+    };
+  };
+
+  // Remove Profile Photo
+  const handleRemovePhoto = async () => {
+    try {
+      if (user?.photoURL) {
+        const imageRef = ref(storage, `users/${user.uid}/profile.png`);
+        await deleteObject(imageRef);
+      }
+      await updateProfile(auth.currentUser, {
+        photoURL: "https://cdn-icons-png.flaticon.com/512/3177/3177440.png",
+      });
+      window.location.reload();
+    } catch (err) {
+      console.log("Remove Error:", err);
+    }
   };
 
   const links = [
@@ -78,69 +89,71 @@ const Navbar = () => {
   return (
     <nav className="bg-indigo-700 text-white shadow-md sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-        <Link to="/" className="text-3xl font-bold tracking-wide hover:scale-105 transition-transform">
+        <Link
+          to="/"
+          className="text-3xl font-bold hover:scale-105 transition-transform"
+        >
           Firebase
         </Link>
 
-        {/* Desktop Links */}
+        {/* DESKTOP LINKS */}
         <div className="hidden md:flex space-x-4 items-center">
           {links.map((link) => (
             <Link
               key={link.path}
               to={link.path}
-              className={`px-4 hover:scale-105  py-2 font-semibold transition-all ${
+              className={`px-4 py-2 font-semibold transition-all rounded-xl ${
                 location.pathname === link.path
-                  ? "bg-blue-600 rounded-xl"
-                  : "hover:bg-blue-500 rounded-xl"
+                  ? "bg-blue-600"
+                  : "hover:bg-blue-500"
               }`}
             >
               {link.name}
             </Link>
           ))}
 
-          {/* Desktop Profile */}
+          {/* DESKTOP PROFILE */}
           {user && (
             <div ref={profileRef} className="relative">
-              <div
-                className="w-11 h-11 rounded-full border-2 overflow-hidden bg-gray-900 text-white flex items-center justify-center cursor-pointer"
+              <img
                 onClick={() => setProfileOpen(!profileOpen)}
-              >
-                {getProfileImage() ? (
-                  <img
-                    src={getProfileImage()}
-                    alt="profile"
-                    className="w-full h-full object-cover"
-                    onError={(e) => (e.target.style.display = "none")}
-                  />
-                ) : (
-                  <FaUser size={20} />
-                )}
-              </div>
+                src={getProfileImage()}
+                alt="profile"
+                className="w-11 h-11 rounded-full border cursor-pointer hover:scale-105 transition-transform"
+              />
 
-              {/* Dropdown */}
+              {/* DROPDOWN */}
               {profileOpen && (
                 <div className="absolute right-0 mt-3 w-48 bg-white text-black p-4 rounded-xl shadow-xl">
                   <div className="flex flex-col items-center gap-2">
-                    {/* Profile Image Circle */}
                     <div className="w-16 h-16 rounded-full bg-gray-200 overflow-hidden flex items-center justify-center">
-                      {getProfileImage() ? (
-                        <img
-                          src={getProfileImage()}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <FaUser size={28} />
-                      )}
+                      <img
+                        src={getProfileImage()}
+                        className="w-full h-full object-cover"
+                      />
                     </div>
-
-                    {/* Username */}
-                    <p className="text-lg font-semibold">{user.displayName}</p>
+                    <p className="text-lg font-semibold">
+                      {user.displayName || user.email}
+                    </p>
                   </div>
 
-                  {/* Logout Button */}
+                  <button
+                    onClick={handleChangePhoto}
+                    className="mt-2 w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 cursor-pointer hover:scale-105 transition-transform font-semibold"
+                  >
+                    Change Photo
+                  </button>
+
+                  <button
+                    onClick={handleRemovePhoto}
+                    className="mt-2 w-full bg-red-500 text-white py-2 rounded-lg hover:bg-red-600 cursor-pointer hover:scale-105 transition-transform font-semibold"
+                  >
+                    Remove Photo
+                  </button>
+
                   <button
                     onClick={handleLogout}
-                    className="mt-4 w-full flex items-center justify-center gap-2 bg-red-500 text-white py-2 rounded-lg hover:bg-red-600 hover:scale-105 cursor-pointer transition-transform font-semibold"
+                    className="mt-2 w-full bg-violet-700 text-white py-2 rounded-lg hover:bg-violet-900 cursor-pointer hover:scale-105 transition-transform font-semibold flex items-center justify-center gap-2"
                   >
                     <FaSignOutAlt /> Logout
                   </button>
@@ -150,12 +163,12 @@ const Navbar = () => {
           )}
         </div>
 
-        {/* Mobile */}
+        {/* MOBILE ICON */}
         <div className="md:hidden flex items-center space-x-2">
           {!user ? (
             <Link
               to="/auth"
-              className="text-white text-xl p-2 bg-blue-600 rounded-full hover:scale-105 transition-transform"
+              className="p-2 bg-blue-600 rounded-full hover:scale-105 transition-transform"
             >
               <FaUser />
             </Link>
@@ -167,16 +180,15 @@ const Navbar = () => {
         </div>
       </div>
 
-      {/* Mobile Sidebar */}
+      {/* MOBILE SIDEBAR */}
       {open && user && (
         <>
           <div
             className="fixed inset-0 bg-black/40 z-40"
             onClick={() => setOpen(false)}
           />
-
           <div
-            className="fixed top-0 left-0 h-full text-white shadow-xl transform transition-transform duration-300 z-50 w-[90%]"
+            className="fixed top-0 left-0 h-full w-[90%] text-white shadow-xl z-50"
             style={{ backgroundColor: "#432DD7" }}
           >
             <div className="flex justify-between items-center px-4 py-4 border-b border-white/20">
@@ -192,41 +204,51 @@ const Navbar = () => {
               </button>
             </div>
 
-            {/* PROFILE CENTER IN MOBILE */}
+            {/* MOBILE PROFILE */}
             <div className="flex flex-col items-center text-center mt-6 gap-5">
               <div className="w-24 h-24 rounded-full bg-gray-200 overflow-hidden flex items-center justify-center">
-                {getProfileImage() ? (
-                  <img
-                    src={getProfileImage()}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <FaUser size={40} />
-                )}
+                <img
+                  src={getProfileImage()}
+                  className="w-full h-full object-cover"
+                />
               </div>
-
-              <p className="text-xl font-semibold">{user.displayName}</p>
+              <p className="text-xl font-semibold">
+                {user.displayName || user.email}
+              </p>
             </div>
+            <div className="flex items-center justify-center gap-3 flex-wrap mt-4">
+              <button
+                onClick={handleChangePhoto}
+                className="px-4 py-2 bg-blue-500 rounded-xl hover:bg-blue-600 cursor-pointer hover:scale-105 transition-transform font-semibold"
+              >
+                Change Photo
+              </button>
 
+              <button
+                onClick={handleRemovePhoto}
+                className="px-4 py-2 bg-red-500 rounded-xl hover:bg-red-600 cursor-pointer hover:scale-105 transition-transform font-semibold"
+              >
+                Remove Photo
+              </button>
+
+              <button
+                onClick={handleLogout}
+                className="mt-2 w-full bg-violet-700 text-white py-2 rounded-lg hover:bg-violet-900 cursor-pointer hover:scale-105 transition-transform font-semibold flex items-center justify-center gap-2"
+              > 
+                <FaSignOutAlt /> Logout
+              </button>
+            </div>
             <div className="flex flex-col mt-8 space-y-2 px-4">
               {links.map((link) => (
                 <Link
                   key={link.path}
                   to={link.path}
-                  className="px-4 py-2 rounded-xl font-semibold bg-white/20"
                   onClick={() => setOpen(false)}
+                  className="px-4 py-2 bg-white/20 rounded-xl font-semibold"
                 >
                   {link.name}
                 </Link>
               ))}
-
-              {/* Logout */}
-              <button
-                onClick={handleLogout}
-                className="px-4 py-2 mt-4 bg-red-500 rounded-xl hover:bg-red-600 flex items-center justify-center gap-2 cursor-pointer hover:scale-105 transition-transform font-semibold"
-              >
-                <FaSignOutAlt /> Logout
-              </button>
             </div>
           </div>
         </>

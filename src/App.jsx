@@ -14,15 +14,17 @@ import Home from "./components/Home";
 const App = () => {
   return (
     <div className="flex flex-col min-h-screen">
+      {/* Navbar */}
       <Navbar />
 
-      <div className="flex-1 w-full xl:container mx-auto xl:py-5 xl:px-8">
+      {/* Main Content */}
+      <main className="flex-1 w-full max-w-[1480px] mx-auto px-4 sm:px-6 lg:px-8 py-5">
         <Routes>
-          {/* Public routes */}
+          {/* Public Routes */}
           <Route path="/" element={<Home />} />
           <Route path="/auth" element={<RegisterLogin />} />
 
-          {/* Protected routes */}
+          {/* Protected Routes */}
           <Route
             path="/dashboard"
             element={
@@ -48,8 +50,9 @@ const App = () => {
             }
           />
         </Routes>
-      </div>
+      </main>
 
+      {/* Footer */}
       <Footer />
     </div>
   );

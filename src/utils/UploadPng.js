@@ -1,29 +1,27 @@
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { storage } from "./Firebase";
 
-// Convert any image URL -> PNG Blob safely
-export const convertImageToBlob = async (url) => {
+/**
+ * Uploads a File/Blob to Firebase Storage and returns download URL
+ */
+export async function uploadPNGToStorage(
+  fileOrBlob,
+  uid,
+  fileName = "profile.png"
+) {
+  const path = `users/${uid}/${fileName}`;
+  const storageRef = ref(storage, path);
+
+  await uploadBytes(storageRef, fileOrBlob);
+  const url = await getDownloadURL(storageRef);
+  return url;
+}
+
+/**
+ * Converts remote image URL to Blob
+ */
+export async function convertImageUrlToBlob(url) {
   const res = await fetch(url, { mode: "cors" });
   const blob = await res.blob();
-
-  const bitmap = await createImageBitmap(blob);
-  const canvas = document.createElement("canvas");
-
-  canvas.width = bitmap.width;
-  canvas.height = bitmap.height;
-
-  const ctx = canvas.getContext("2d");
-  ctx.drawImage(bitmap, 0, 0);
-
-  return await new Promise((resolve) =>
-    canvas.toBlob((pngBlob) => resolve(pngBlob), "image/png")
-  );
-};
-
-// Upload PNG to Storage
-export const uploadPNGToStorage = async (pngBlob, uid) => {
-  const storage = getStorage();
-  const storageRef = ref(storage, `profileImages/${uid}.png`);
-
-  await uploadBytes(storageRef, pngBlob);
-  return await getDownloadURL(storageRef);
-};
+  return blob;
+}

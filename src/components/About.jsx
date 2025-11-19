@@ -38,21 +38,26 @@ export default function About() {
   ];
 
   return (
-    <div className="min-h-screen p-8 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 text-white rounded-xl">
-      <h1 className="text-4xl font-bold mb-6 text-center">
+    <div className="min-h-screen p-4 sm:p-6 md:p-8 bg-gray-100 text-gray-900 rounded-xl">
+      <h1 className="text-3xl sm:text-4xl font-bold mb-6 text-center">
         Frontend Developer Roadmap
       </h1>
+
       <div className="space-y-6">
         {roadmap.map((item) => (
           <div
             key={item.skill}
-            className="bg-white/10 p-4 rounded-xl shadow-lg"
+            className="bg-white p-4 sm:p-6 md:p-8 rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300"
           >
-            <h2 className="text-2xl font-bold mb-2">{item.skill}</h2>
+            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-2">
+              {item.skill}
+            </h2>
             <p className="font-semibold mb-1">Projects:</p>
-            <ul className="list-disc list-inside">
+            <ul className="list-disc list-inside space-y-1">
               {item.projects.map((proj) => (
-                <li key={proj}>{proj}</li>
+                <li key={proj} className="text-sm sm:text-base md:text-lg">
+                  {proj}
+                </li>
               ))}
             </ul>
           </div>
