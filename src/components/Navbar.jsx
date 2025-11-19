@@ -233,7 +233,7 @@ const Navbar = () => {
 
               <button
                 onClick={handleLogout}
-                className="mt-2 w-full bg-violet-700 text-white py-2 rounded-lg hover:bg-violet-900 cursor-pointer hover:scale-105 transition-transform font-semibold flex items-center justify-center gap-2"
+                className="mt-2 md:w-full bg-violet-700 text-white py-2 rounded-xl hover:bg-violet-900 cursor-pointer hover:scale-105 transition-transform font-semibold flex items-center justify-center gap-2 w-50 "
               > 
                 <FaSignOutAlt /> Logout
               </button>
